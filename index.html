@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>เกมความจำ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+
+    body {
+      font-family: 'Kanit', sans-serif;
+      background: linear-gradient(135deg, #e0f7fa, #e1bee7);
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 8vw;
+      margin: 0 0 20px;
+      color: #1f2937;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .level-buttons {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .level-btn {
+      padding: 10px 25px;
+      font-size: 1em;
+      border: none;
+      border-radius: 10px;
+      background: #f3e8ff;
+      color: #6b21a8;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+    }
+
+    .level-btn:hover {
+      background: #e9d5ff;
+      transform: translateY(-2px);
+    }
+
+    .level-btn.active {
+      background: #9333ea;
+      color: white;
+      font-weight: bold;
+    }
+
+    #startBtn {
+      padding: 12px 30px;
+      font-size: 1.2em;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+      margin-top: 10px;
+    }
+
+    #startBtn:hover {
+      background: #059669;
+    }
+
+    #score {
+      font-size: 1.4em;
+      color: #111827;
+      margin-top: 20px;
+    }
+
+    .btn-container {
+      display: grid;
+      gap: 16px;
+      margin: 25px auto;
+      max-width: 400px;
+      place-items: center;
+    }
+
+    .btn {
+      width: 80px;
+      height: 80px;
+      background: white;
+      color: #1f2937;
+      font-size: 1.4em;
+      border-radius: 15px;
+      border: 2px solid #d1d5db;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .btn:hover {
+      background: #f0fdf4;
+    }
+
+    .btn.active {
+      background: #fde68a;
+    }
+
+    .btn.correct {
+      background: #34d399 !important;
+      color: white;
+    }
+
+    .btn.wrong {
+      background: #f87171 !important;
+      color: white;
+    }
+
+    #musicToggle {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      background: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+      border: none;
+      color: #374151;
+    }
+
+    @media (max-width: 768px) {
+      .btn {
+        width: 60px;
+        height: 60px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🧠 เกมความจำ</h1>
+
+  <div class="level-buttons">
+    <button class="level-btn active" data-count="4">ง่าย</button>
+    <button class="level-btn" data-count="6">กลาง</button>
+    <button class="level-btn" data-count="8">ยาก</button>
+  </div>
+
+  <button id="startBtn">เริ่มเกม</button>
+  <div id="score">คะแนน: 0</div>
+  <div class="btn-container" id="gameBoard"></div>
+
+  <button id="musicToggle">🔈 เพลง: เปิดอยู่</button>
+
+  <!-- เสียง -->
+  <audio id="sound-correct" src="sounds/8-bit.mp3"></audio>
+  <audio id="sound-wrong" src="sounds/wrong-47985.mp3"></audio>
+  <audio id="sound-flash" src="sounds/classic-game.mp3"></audio>
+  <audio id="bg-music" src="sounds/lofi-study-music.mp3" loop preload="auto"></audio>
+
+  <script>
+    const startBtn = document.getElementById("startBtn");
+    const levelBtns = document.querySelectorAll(".level-btn");
+    const gameBoard = document.getElementById("gameBoard");
+    const scoreDisplay = document.getElementById("score");
+
+    const soundCorrect = document.getElementById("sound-correct");
+    const soundWrong = document.getElementById("sound-wrong");
+    const soundFlash = document.getElementById("sound-flash");
+
+    const bgMusic = document.getElementById("bg-music");
+    const musicToggle = document.getElementById("musicToggle");
+
+    let sequence = [];
+    let userSequence = [];
+    let buttons = [];
+    let level = 4;
+    let score = 0;
+    let isMusicPlaying = false;
+
+    levelBtns.forEach(btn => {
+      btn.onclick = () => {
+        levelBtns.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        level = parseInt(btn.dataset.count);
+      };
+    });
+
+    startBtn.onclick = () => {
+      generateButtons(level);
+      sequence = [];
+      score = 0;
+      updateScore();
+      nextRound();
+      if (!isMusicPlaying) {
+        tryPlaySound(bgMusic);
+        bgMusic.volume = 0.3;
+        isMusicPlaying = true;
+        updateMusicToggleText();
+      }
+    };
+
+    musicToggle.onclick = () => {
+      if (bgMusic.paused) {
+        bgMusic.play();
+        isMusicPlaying = true;
+      } else {
+        bgMusic.pause();
+        isMusicPlaying = false;
+      }
+      updateMusicToggleText();
+    };
+
+    function updateMusicToggleText() {
+      musicToggle.textContent = isMusicPlaying ? "🔈 เพลง: เปิดอยู่" : "🔇 เพลง: ปิดอยู่";
+    }
+
+    function generateButtons(count) {
+      gameBoard.innerHTML = "";
+      buttons = [];
+
+      let columns;
+      if (count === 4) columns = 2;
+      else if (count === 6) columns = 3;
+      else if (count === 8) columns = 4;
+      else columns = Math.ceil(Math.sqrt(count));
+
+      gameBoard.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+
+      for (let i = 0; i < count; i++) {
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.textContent = i + 1;
+        btn.onclick = () => handleUserInput(i);
+        gameBoard.appendChild(btn);
+        buttons.push(btn);
+      }
+    }
+
+    function updateScore() {
+      scoreDisplay.textContent = `คะแนน: ${score}`;
+    }
+
+    function nextRound() {
+      userSequence = [];
+      sequence = [];
+      for (let i = 0; i < score + 1; i++) {
+        sequence.push(Math.floor(Math.random() * buttons.length));
+      }
+      updateScore();
+      showSequence();
+    }
+
+    function showSequence() {
+      let i = 0;
+      const interval = setInterval(() => {
+        const index = sequence[i];
+        highlightButton(index);
+        tryPlaySound(soundFlash);
+        i++;
+        if (i >= sequence.length) clearInterval(interval);
+      }, 700);
+    }
+
+    function highlightButton(index) {
+      buttons[index].classList.add("active");
+      setTimeout(() => {
+        buttons[index].classList.remove("active");
+      }, 300);
+    }
+
+    function handleUserInput(index) {
+      userSequence.push(index);
+      const currentStep = userSequence.length - 1;
+
+      if (sequence[currentStep] === index) {
+        flashColor(index, 'correct');
+        tryPlaySound(soundCorrect);
+      } else {
+        flashColor(index, 'wrong');
+        tryPlaySound(soundWrong);
+        setTimeout(() => {
+          alert("ผิด! เริ่มใหม่");
+          sequence = [];
+          score = 0;
+          updateScore();
+          nextRound();
+        }, 200);
+        return;
+      }
+
+      if (userSequence.length === sequence.length) {
+        score++;
+        updateScore();
+        setTimeout(() => {
+          nextRound();
+        }, 800);
+      }
+    }
+
+    function flashColor(index, type) {
+      const btn = buttons[index];
+      btn.classList.add(type);
+      setTimeout(() => {
+        btn.classList.remove(type);
+      }, 300);
+    }
+
+    function tryPlaySound(audio) {
+      try {
+        audio.currentTime = 0;
+        audio.play();
+      } catch (err) {
+        console.warn("ไม่สามารถเล่นเสียงได้:", err);
+      }
+    }
+  </script>
+</body>
+
+</html>
