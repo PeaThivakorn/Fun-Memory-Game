@@ -175,6 +175,12 @@
     const bgMusic = document.getElementById("bg-music");
     const musicToggle = document.getElementById("musicToggle");
 
+    // ตั้งค่าความดังของเสียง (0.0 = เงียบ, 1.0 = ดังสุด)
+    soundCorrect.volume = 0.4;
+    soundWrong.volume = 0.4;
+    soundFlash.volume = 0.4;
+    bgMusic.volume = 1.0;
+
     let sequence = [];
     let userSequence = [];
     let buttons = [];
